@@ -35,12 +35,31 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // This requires SonarQube integration configured in Jenkins
+                    withSonarQubeEnv('your-sonarqube-server') {
+                        dir('backend') {
+                            sh 'sonar-scanner'
+                        }
+                        dir('frontend') {
+                            sh 'sonar-scanner'
+                        }
+                    }
+                    // Wait for SonarQube analysis to complete and check quality gate
+                    timeout(time: 1, unit: 'hour') {
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+        }
+
         stage('Docker Build & Push Frontend') {
             steps {
                 dir('frontend') {
                     script {
-                        docker.withRegistry("https://
-                        ${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+                        docker.withRegistry("https://${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
                             def img = docker.build("${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}")
                             img.push()
                         }
@@ -53,8 +72,7 @@ pipeline {
             steps {
                 dir('backend') {
                     script {
-                        docker.withRegistry("https://
-                        ${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+                        docker.withRegistry("https://${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
                             def img = docker.build("${BACKEND_IMAGE_NAME}:${IMAGE_TAG}")
                             img.push()
                         }
@@ -65,13 +83,17 @@ pipeline {
 
         stage('Security Scan Frontend') {
             steps {
-                sh "trivy image ${ECR_REGISTRY}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+                // Scan the frontend Docker image for vulnerabilities using Trivy.
+                // The --exit-code 1 flag causes the step to fail if vulnerabilities are found.
+                // The --severity HIGH,CRITICAL flag scans for high and critical vulnerabilities.
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
         stage('Security Scan Backend') {
             steps {
-                sh "trivy image ${ECR_REGISTRY}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+                // Scan the backend Docker image for vulnerabilities using Trivy.
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
