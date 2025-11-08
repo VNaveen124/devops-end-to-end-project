@@ -1,0 +1,7 @@
+---
+- name: Bootstrap EC2 Nodes
+  hosts: all
+  become: yes
+  roles:
+    - monitoring-agent
+    - logging-setup

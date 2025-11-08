@@ -1,0 +1,122 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID = "YOUR_AWS_ACCOUNT_ID"
+        AWS_REGION = "us-east-1"
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        FRONTEND_IMAGE_NAME = "frontend"
+        BACKEND_IMAGE_NAME = "backend"
+        IMAGE_TAG = "build-${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Unit Test Frontend') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install'
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Build & Unit Test Backend') {
+            steps {
+                dir('backend') {
+                    sh 'pip install -r requirements.txt'
+                    sh 'pytest'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // This requires SonarQube integration configured in Jenkins
+                    withSonarQubeEnv('your-sonarqube-server') {
+                        dir('backend') {
+                            sh 'sonar-scanner'
+                        }
+                        dir('frontend') {
+                            sh 'sonar-scanner'
+                        }
+                    }
+                    // Wait for SonarQube analysis to complete and check quality gate
+                    timeout(time: 1, unit: 'hour') {
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push Frontend') {
+            steps {
+                dir('frontend') {
+                    script {
+                        docker.withRegistry("https://${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+                            def img = docker.build("${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}")
+                            img.push()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push Backend') {
+            steps {
+                dir('backend') {
+                    script {
+                        docker.withRegistry("https://${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+                            def img = docker.build("${BACKEND_IMAGE_NAME}:${IMAGE_TAG}")
+                            img.push()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan Frontend') {
+            steps {
+                // Scan the frontend Docker image for vulnerabilities using Trivy.
+                // The --exit-code 1 flag causes the step to fail if vulnerabilities are found.
+                // The --severity HIGH,CRITICAL flag scans for high and critical vulnerabilities.
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Security Scan Backend') {
+            steps {
+                // Scan the backend Docker image for vulnerabilities using Trivy.
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Deploy Trigger to ArgoCD') {
+            steps {
+                script {
+                    // This step would typically involve updating the image tag in the k8s manifests
+                    // and pushing the change to the Git repository, which would trigger ArgoCD to sync.
+                    // For this example, we'll just print a message.
+                    echo "Triggering ArgoCD deployment..."
+                    // Example:
+                    // withCredentials([gitUsernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                    //     sh 'git config --global user.email "jenkins@example.com"'
+                    //     sh 'git config --global user.name "Jenkins"'
+                    //     sh 'git checkout -b release'
+                    //     sh "sed -i 's|image:.*|image: ${ECR_REGISTRY}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}|g' k8s/overlays/dev/frontend-deployment.yaml"
+                    //     sh "sed -i 's|image:.*|image: ${ECR_REGISTRY}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}|g' k8s/overlays/dev/backend-deployment.yaml"
+                    //     sh 'git add k8s/overlays/dev'
+                    //     sh 'git commit -m "Update image tags for build ${BUILD_NUMBER}"'
+                    //     sh 'git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/your-repo.git release'
+                    // }
+                }
+            }
+        }
+    }
+}

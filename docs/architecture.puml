@@ -1,0 +1,78 @@
+@startuml
+!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v10.0/dist
+!includeurl AWSPuml/AWSCommon.puml
+!includeurl AWSPuml/AWSSimplified.puml
+!includeurl AWSPuml/Groups/all.puml
+
+skinparam linetype ortho
+
+title 3-Tier Web Application on AWS
+
+actor "Developer" as Dev
+
+box "GitHub" #Transparent
+    participant "Repo" as Repo
+end box
+
+box "CI/CD" #Transparent
+    participant "Jenkins" as Jenkins
+    participant "ArgoCD" as ArgoCD
+end box
+
+box "AWS Cloud (us-east-1)" #Transparent
+    left to right direction
+    ' VPC
+    Cloud "VPC" as VPC {
+        ' Public Subnets
+        frame "Public Subnets" {
+            collections "ALB" as ALB
+        }
+
+        ' Private Subnets
+        frame "Private Subnets" {
+            ' EKS Cluster
+            frame "Amazon EKS" {
+                Kubernetes as EKS
+                ' Pods
+                node "Frontend Pods" as FrontendPods
+                node "Backend Pods" as BackendPods
+            }
+
+            ' RDS
+            frame "Amazon RDS" {
+                Database "MySQL" as RDS
+            }
+        }
+    }
+
+    ' Other AWS Services
+    package "Other Services" {
+        ECR("ECR")
+        SecretsManager("Secrets Manager")
+        IAM("IAM")
+        S3("S3")
+        Prometheus("Prometheus")
+        Grafana("Grafana")
+        Datadog("Datadog")
+    }
+end box
+
+
+' Relationships
+Dev -> Repo : Push code
+Repo -> Jenkins : Webhook trigger
+Jenkins -> ECR : Push Docker image
+Jenkins -> ArgoCD : Trigger sync
+ArgoCD -> EKS : Deploy
+ALB -> FrontendPods : Route traffic
+FrontendPods -> BackendPods : API calls
+BackendPods -> RDS : Database queries
+BackendPods -> SecretsManager : Get DB credentials
+
+EKS -> ECR : Pull image
+EKS -> SecretsManager : Get secrets
+EKS -> Prometheus : Expose metrics
+Prometheus -> Grafana : Data source
+EKS -> Datadog : Ship logs/metrics
+
+@enduml
