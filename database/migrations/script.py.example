@@ -1,0 +1,12 @@
+from alembic.config import Config
+from alembic import command
+
+# Alembic configuration
+alembic_cfg = Config("alembic.ini")
+
+def run_migrations():
+    """Apply all pending migrations."""
+    command.upgrade(alembic_cfg, "head")
+
+if __name__ == "__main__":
+    run_migrations()

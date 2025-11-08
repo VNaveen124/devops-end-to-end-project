@@ -1,0 +1,5 @@
+---
+- name: Install Fluentd
+  gem:
+    name: fluentd
+    state: present
