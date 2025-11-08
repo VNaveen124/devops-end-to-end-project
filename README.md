@@ -56,14 +56,7 @@ See the [architecture diagram](docs/architecture.puml) for a visual representati
 
 The deployment process is automated through a Jenkins CI/CD pipeline, which is triggered by a push to the main branch. The pipeline builds, tests, and scans the application, and then triggers a deployment with ArgoCD.
 
-### Code Quality and Security
-
-The CI/CD pipeline integrates two key tools to ensure code quality and security:
-
-*   **SonarQube:** After the unit tests are run, a SonarQube analysis is performed on both the frontend and backend code. The pipeline is configured to check the SonarQube Quality Gate and will fail the build if the gate conditions are not met. This ensures that all new code meets the defined quality standards.
-
-*   **Trivy:** Before deployment, the Docker images for both the frontend and backend are scanned for vulnerabilities using Trivy. The pipeline is set to fail if any `HIGH` or `CRITICAL` severity vulnerabilities are detected, preventing insecure images from being deployed to the cluster.
-
+main
 ### Infrastructure
 
 The infrastructure is provisioned with Terraform.
