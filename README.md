@@ -56,6 +56,7 @@ See the [architecture diagram](docs/architecture.puml) for a visual representati
 
 The deployment process is automated through a Jenkins CI/CD pipeline, which is triggered by a push to the main branch. The pipeline builds, tests, and scans the application, and then triggers a deployment with ArgoCD.
 
+main
 ### Infrastructure
 
 The infrastructure is provisioned with Terraform.

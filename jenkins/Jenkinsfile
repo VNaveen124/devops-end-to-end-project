@@ -35,12 +35,12 @@ pipeline {
             }
         }
 
+main
         stage('Docker Build & Push Frontend') {
             steps {
                 dir('frontend') {
                     script {
-                        docker.withRegistry("https://
-                        ${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+main
                             def img = docker.build("${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}")
                             img.push()
                         }
@@ -53,8 +53,7 @@ pipeline {
             steps {
                 dir('backend') {
                     script {
-                        docker.withRegistry("https://
-                        ${ECR_REGISTRY}", 'ecr:us-east-1:jenkins-ecr-credentials') {
+main
                             def img = docker.build("${BACKEND_IMAGE_NAME}:${IMAGE_TAG}")
                             img.push()
                         }
@@ -65,13 +64,13 @@ pipeline {
 
         stage('Security Scan Frontend') {
             steps {
-                sh "trivy image ${ECR_REGISTRY}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+main
             }
         }
 
         stage('Security Scan Backend') {
             steps {
-                sh "trivy image ${ECR_REGISTRY}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+main
             }
         }
 
